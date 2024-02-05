@@ -52,8 +52,6 @@ func main() {
 	handler.Timeout = 5 * time.Second // Set your timeout value
 
 	// Deepsea `10.6.70.5`
-	// Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
-	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
 
 	// Create Modbus client using the handler
 	Deepsea := modbus.NewClient(handler)
@@ -64,7 +62,7 @@ func main() {
 		fmt.Println("Error connecting to Modbus server:", err)
 		return
 	}
-	defer handler.Close() // good practice
+	defer handler.Close()
 
 	// Read input register 1027 or return a error message
 	results, err := Deepsea.ReadHoldingRegisters(1027, 1)
@@ -76,10 +74,10 @@ func main() {
 	// Display the results
 	fmt.Printf("Read Temperature of deepsea: %d%%\n", results[1])
 
-	//New network (Bluelog)
+	//Connect to new network (Bluelog)
 	handler1 := modbus.NewTCPClientHandler("10.6.70.15:502")
 	handler1.SlaveId = 1
-	handler1.Timeout = 5 * time.Second // Set your timeout value
+	handler1.Timeout = 5 * time.Second
 	defer handler1.Close()
 	Bluelog := modbus.NewClient(handler1)
 
@@ -90,17 +88,19 @@ func main() {
 	}
 	defer handler1.Close()
 
-	Bluelog_power, errr := Bluelog.ReadHoldingRegisters(254, 2)
-	if errr != nil {
-		fmt.Println("Error reading input registers:", errr)
-		return
-	}
+	//Read values
+	// Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
+	Bluelog_power, _ := Bluelog.ReadHoldingRegisters(254, 2)
 	Bluelog_freq, _ := Bluelog.ReadHoldingRegisters(98, 2)
 	Bluelog_voltage, _ := Bluelog.ReadHoldingRegisters(100, 2)
-	float32Value := bytesToFloat32(Bluelog_power)
+
+	//Convert values
+	power := bytesToFloat32(Bluelog_power)
 	freq := bytesToFloat32(Bluelog_freq)
 	Voltage := bytesToFloat32(Bluelog_voltage)
-	fmt.Printf("Read  Power of bluelog: %f\n", float32Value)
+
+	//Display
+	fmt.Printf("Read  Power of bluelog: %f\n", power)
 	fmt.Printf("Read  Frequency of bluelog: %v\n", freq)
 	fmt.Printf("Read  Voltage of bluelog: %v\n", Voltage)
 
@@ -118,6 +118,8 @@ func main() {
 	}
 	defer handler2.Close()
 
+	//Read values
+	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
 	SMA_power, err3 := SMA.ReadInputRegisters(199, 1)
 	if err3 != nil {
 		fmt.Println("Error reading input registers:", err3)
@@ -126,11 +128,11 @@ func main() {
 	fmt.Printf("Read SMA power %v\n", SMA_power)
 
 	SMA_freq, _ := SMA.ReadHoldingRegisters(201, 1)
-
 	fmt.Printf("Read SMA power %v", SMA_freq)
 }
+
 func bytesToFloat32(bytes []byte) float32 {
-	// Assuming little-endian byte order, adjust accordingly if needed
+	// Assuming Big-endian byte order, adjust accordingly if needed
 	bits := binary.BigEndian.Uint32(bytes)
 	return math.Float32frombits(bits)
 }
