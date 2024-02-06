@@ -28,6 +28,10 @@ type Config struct {
 	BaudRates          []int         `json:"baud_rates"`
 	Endianness         string        `json:"endianness"`
 }
+type RegisterRange struct {
+	first int `json:"startvalue"`
+	last  int `json:"endvalue"`
+}
 
 // IDRange struct to hold start and end IDs
 type IDRange struct {
@@ -35,18 +39,13 @@ type IDRange struct {
 	End   int `json:"end"`
 }
 
-type RegisterRange struct {
-	Start int `json:"end"`
-	End   int `json:"end"`
-}
-
 func loadjson(filename string) (Config, error) {
 	var config Config
 	configfile, err := os.Open(filename)
-	defer configfile.Close()
 	if err != nil {
 		return config, err
 	}
+	defer configfile.Close()
 	jsonParser := json.NewDecoder(configfile)
 	err = jsonParser.Decode(&config)
 	return config, err
@@ -57,7 +56,8 @@ func main() {
 	//Load json file
 	json_data, _ := loadjson("config.json")
 	check_IP_connection("10.6.70.5", "502")
-
+	value := json_data.LengthOfEachRead
+	fmt.Println(value)
 	//Actual code
 	ip_mask := convert_IP(json_data.IPmask)
 	ip_device := convert_IP(json_data.IPDevice)
@@ -73,27 +73,27 @@ func main() {
 
 		if bool_port_connection && (ip_counter != ip_device) { // check if it is the Host
 			for j := json_data.SlaveIDRange.Start; j <= json_data.SlaveIDRange.End; j++ {
-				// data := modbusmaker(ip_checker.String(), byte(j), uint16(json_data.KnownRegisterRange.Start), uint16(json_data.LengthOfEachRead))
-				fmt.Printf("number %d.%d the data is %v\n", i, j, "found")
+				data, err := modbusmaker(ip_checker.String(), byte(j), 101, 1)
+				fmt.Printf(ip_checker.String()+" %v %d\n", data, err)
 			}
 
 		}
-		if !bool_port_connection {
-			fmt.Printf("number %d the data is %v\n", i, "lost")
-		}
+		// if !bool_port_connection {
+		// 	fmt.Printf("number %d the data is %v\n", i, "lost")
+		// }
 	}
 	fmt.Println("Made it")
 	//connect to the deepsea
-	fuel_level := modbusmaker("10.6.70.5", 0, 1027, 1)
+	fuel_level, _ := modbusmaker("10.6.70.5", 0, 1027, 1)
 	fmt.Printf("Read Fuel level of deepsea: %d%%\n", fuel_level[1])
 
 	//Connect to new Bluelog
 	// Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
-	power_bluelog := modbusmaker("10.6.70.15", 1, 254, 2)
+	power_bluelog, _ := modbusmaker("10.6.70.15", 1, 254, 2)
 	fmt.Printf("Read Power of bluelog: %v\n", bytesToFloat32(power_bluelog))
 
 	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
-	power_SMA := modbusmaker("10.6.70.28", 0, 199, 2)
+	power_SMA, _ := modbusmaker("10.6.70.28", 0, 199, 2)
 	fmt.Printf("Read power of SMA %v\n", power_SMA)
 }
 
@@ -105,15 +105,13 @@ func bytesToFloat32(bytes []byte) float32 {
 	return math.Float32frombits(bits)
 }
 
-func mask_ip(IP_mask string, IP_device string) {
-
-}
-
-func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_bytes uint16) []byte {
+func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_bytes uint16) ([]byte, int) {
+	// i = 1 connection i=2 read and i=3 both error
+	i := 0
 	address := IP_mask + ":502"
 	handler := modbus.NewTCPClientHandler(address)
 
-	handler.Timeout = 5 * time.Second // Set your timeout value
+	handler.Timeout = time.Second / 10 // Set your timeout value
 	handler.SlaveId = slaveID
 	// Deepsea `10.6.70.5`
 
@@ -123,15 +121,19 @@ func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_byt
 	// Connect to the Modbus server or return a error message
 	err := handler.Connect()
 	if err != nil {
-		fmt.Println("Error connecting to Modbus server:", err)
+		fmt.Println(err)
+		// fmt.Println("Connection error")
+		i++
 	}
 	defer handler.Close()
 
 	results, err := client.ReadHoldingRegisters(register_value, number_bytes)
 	if err != nil {
-		fmt.Println("Error reading input registers:", err)
+		fmt.Println(err)
+		// fmt.Println("Reading error")
+		i += 2
 	}
-	return results
+	return results, i
 	// Display the results
 	// fmt.Printf("Read Fuel level of deepsea: %d%%\n", results[1])
 }

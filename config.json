@@ -4,23 +4,25 @@
     "ip_mask": "255.255.255.0",
 
     "ip_device": "10.6.70.44",
+
+    "known_register_range":{
+      "startvalue":11,
+      "endvalue":505050
+    },
     
 
     "slave_id_range": {
-      "start": 0,
-      "end": 5
+      "start":0,
+      "end":255
     },
 
-    "known_register_range":{
-      "start": 199,
-      "end": 205
-    },
+   
   
-    "lenght_of_each_read": 1,
+    "lenght_of_each_read":1,
 
     "port": "502",
 
-    "function_code": 3,
+    "function_code":3,
 
     "baud_rates": [9600, 19200, 38400],  
     
