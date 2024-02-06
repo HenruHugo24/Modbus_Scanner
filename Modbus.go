@@ -57,39 +57,32 @@ func main() {
 	//Load json file
 	json_data, _ := loadjson("config.json")
 	check_IP_connection("10.6.70.5", "502")
+
 	//Actual code
 	ip_mask := convert_IP(json_data.IPmask)
 	ip_device := convert_IP(json_data.IPDevice)
 	Total_adresses := ip_mask ^ (0b11111111111111111111111111111111)
-	fmt.Printf("%b\n", ip_mask)
-	fmt.Println(Total_adresses)
+	fmt.Printf("Total number of adresses to scan: %d\n", Total_adresses)
 	ip_counter := ip_mask & ip_device
 	port_number := json_data.Port
 
 	for i := 1; i <= Total_adresses; i++ {
 		// fmt.Printf("%b\n", ip_counter+i)
 		ip_checker := iplib.Uint32ToIP4(uint32((ip_counter) + i))
-		check_IP_connection(ip_checker.String(), port_number)
+		bool_port_connection := check_IP_connection(ip_checker.String(), port_number)
+
+		if bool_port_connection && (ip_counter != ip_device) { // check if it is the Host
+			for j := json_data.SlaveIDRange.Start; j <= json_data.SlaveIDRange.End; j++ {
+				// data := modbusmaker(ip_checker.String(), byte(j), uint16(json_data.KnownRegisterRange.Start), uint16(json_data.LengthOfEachRead))
+				fmt.Printf("number %d.%d the data is %v\n", i, j, "found")
+			}
+
+		}
+		if !bool_port_connection {
+			fmt.Printf("number %d the data is %v\n", i, "lost")
+		}
 	}
-	// ip_device := convert_IP(json_data.IPDevice)
-
-	// ip_counter := ip_device&ip_mask
-
-	// for (ip_device&ip_mask) = (ip_counter&ip_mask){
-	// 	ip_counter++
-	// }
-
-	//see if port is open
-
-	//Get ip in working format
-
-	ip_b := convert_IP(json_data.IPDevice)
-
-	// ip_b := [4]byte{byte(octet0), byte(octet1), byte(octet2), byte(octet3)}
-
-	fmt.Printf("has 4-byte representation of %b\n", ip_b)
-	// ip_b := net.IP.To4(ip)
-
+	fmt.Println("Made it")
 	//connect to the deepsea
 	fuel_level := modbusmaker("10.6.70.5", 0, 1027, 1)
 	fmt.Printf("Read Fuel level of deepsea: %d%%\n", fuel_level[1])
@@ -100,7 +93,7 @@ func main() {
 	fmt.Printf("Read Power of bluelog: %v\n", bytesToFloat32(power_bluelog))
 
 	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
-	power_SMA := modbusmaker("10.6.70.28", 0, 233, 2)
+	power_SMA := modbusmaker("10.6.70.28", 0, 199, 2)
 	fmt.Printf("Read power of SMA %v\n", power_SMA)
 }
 
@@ -143,15 +136,19 @@ func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_byt
 	// fmt.Printf("Read Fuel level of deepsea: %d%%\n", results[1])
 }
 
-func check_IP_connection(host string, port string) {
+func check_IP_connection(host string, port string) bool {
 	timeout := time.Second / 50
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+	boolean := false
 	if err != nil {
 		// fmt.Print("Closed\n")
+		boolean = false
 	}
 	if conn != nil {
-		fmt.Print("Open\n")
+		// fmt.Print("Open\n")
+		boolean = true
 	}
+	return boolean
 }
 
 func convert_IP(IP string) int {
