@@ -2,10 +2,16 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
+	"net"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/c-robinson/iplib/v2"
 	"github.com/goburrow/modbus"
 )
 
@@ -13,11 +19,11 @@ import (
 type Config struct {
 	Protocol           string        `json:"protocol"`
 	IPmask             string        `json:"ip_mask"`
-	IPRange            string        `json:"ip_device"`
+	IPDevice           string        `json:"ip_device"`
 	SlaveIDRange       IDRange       `json:"slave_id_range"`
 	KnownRegisterRange RegisterRange `json:"known_register_range"`
 	LengthOfEachRead   int           `json:"length_of_each_read"`
-	Port               int           `json:"port"`
+	Port               string        `json:"port"`
 	FunctionCode       int           `json:"function_code"`
 	BaudRates          []int         `json:"baud_rates"`
 	Endianness         string        `json:"endianness"`
@@ -34,79 +40,71 @@ type RegisterRange struct {
 	End   int `json:"end"`
 }
 
-func main() {
+func loadjson(filename string) (Config, error) {
+	var config Config
+	configfile, err := os.Open(filename)
+	defer configfile.Close()
+	if err != nil {
+		return config, err
+	}
+	jsonParser := json.NewDecoder(configfile)
+	err = jsonParser.Decode(&config)
+	return config, err
+}
 
-	// client := modbus.TCPClient("10.6.70.5")
-	// //client := modbus.NewTCPClient("10.6.70.5")
-	// // Read input register 1027
-	// results, _ := client.ReadInputRegisters(1027, 1)
-	// fmt.Printf("Read  register: %016b\n", results)
+// ////////////////////////////Start of MAIN//////////////////////////////////////////////
+func main() {
+	//Load json file
+	json_data, _ := loadjson("config.json")
+	check_IP_connection("10.6.70.5", "502")
+	//Actual code
+	ip_mask := convert_IP(json_data.IPmask)
+	ip_device := convert_IP(json_data.IPDevice)
+	Total_adresses := ip_mask ^ (0b11111111111111111111111111111111)
+	fmt.Printf("%b\n", ip_mask)
+	fmt.Println(Total_adresses)
+	ip_counter := ip_mask & ip_device
+	port_number := json_data.Port
+
+	for i := 1; i <= Total_adresses; i++ {
+		// fmt.Printf("%b\n", ip_counter+i)
+		ip_checker := iplib.Uint32ToIP4(uint32((ip_counter) + i))
+		check_IP_connection(ip_checker.String(), port_number)
+	}
+	// ip_device := convert_IP(json_data.IPDevice)
+
+	// ip_counter := ip_device&ip_mask
+
+	// for (ip_device&ip_mask) = (ip_counter&ip_mask){
+	// 	ip_counter++
+	// }
+
+	//see if port is open
+
+	//Get ip in working format
+
+	ip_b := convert_IP(json_data.IPDevice)
+
+	// ip_b := [4]byte{byte(octet0), byte(octet1), byte(octet2), byte(octet3)}
+
+	fmt.Printf("has 4-byte representation of %b\n", ip_b)
+	// ip_b := net.IP.To4(ip)
+
+	//connect to the deepsea
 	fuel_level := modbusmaker("10.6.70.5", 0, 1027, 1)
 	fmt.Printf("Read Fuel level of deepsea: %d%%\n", fuel_level[1])
-	//Connect to new network (Bluelog)
-	power_bluelog := modbusmaker("10.6.70.15", 1, 254, 2)
-	fmt.Printf("Read Power of bluelog: %v\n", power_bluelog)
 
-	handler1 := modbus.NewTCPClientHandler("10.6.70.15:502")
-	handler1.SlaveId = 1
-	handler1.Timeout = 5 * time.Second
-	defer handler1.Close()
-	Bluelog := modbus.NewClient(handler1)
-
-	err1 := handler1.Connect()
-	if err1 != nil {
-		fmt.Println("Error connecting to Modbus server:", err1)
-		return
-	}
-	defer handler1.Close()
-
-	//Read values
+	//Connect to new Bluelog
 	// Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
-	Bluelog_power, _ := Bluelog.ReadHoldingRegisters(254, 2)
-	Bluelog_freq, _ := Bluelog.ReadHoldingRegisters(98, 2)
-	Bluelog_voltage, _ := Bluelog.ReadHoldingRegisters(100, 2)
-	fmt.Println(Bluelog_power)
-	//Convert values
-	b := []byte{0x3f, 0x9d, 0x70, 0xa4} // Represents 1.23456789 in IEEE 754 representation
-	fmt.Println(b)
-	f := bytesToFloat32(b)
-	fmt.Println(f)
-	power := bytesToFloat32(Bluelog_power)
-	freq := bytesToFloat32(Bluelog_freq)
-	Voltage := bytesToFloat32(Bluelog_voltage)
+	power_bluelog := modbusmaker("10.6.70.15", 1, 254, 2)
+	fmt.Printf("Read Power of bluelog: %v\n", bytesToFloat32(power_bluelog))
 
-	//Display
-	fmt.Println(power)
-	fmt.Printf("Read  Power of bluelog: %f\n", power)
-	fmt.Printf("Read  Frequency of bluelog: %f\n", freq)
-	fmt.Printf("Read  Voltage of bluelog: %f\n", Voltage)
-
-	//New network (SMA)
-	handler2 := modbus.NewTCPClientHandler("10.6.70.28:502")
-	handler2.Timeout = 5 * time.Second // Set your timeout value
-	defer handler1.Close()
-
-	SMA := modbus.NewClient(handler2)
-
-	err2 := handler2.Connect()
-	if err2 != nil {
-		fmt.Println("Error connecting to Modbus server:", err2)
-		return
-	}
-	defer handler2.Close()
-
-	//Read values
 	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
-	SMA_power, err3 := SMA.ReadInputRegisters(233, 1)
-	if err3 != nil {
-		fmt.Println("Error reading input registers:", err3)
-		return
-	}
-	fmt.Printf("Read SMA power %v\n", SMA_power)
-
-	SMA_freq, _ := SMA.ReadHoldingRegisters(233, 1)
-	fmt.Printf("Read SMA power %v", SMA_freq)
+	power_SMA := modbusmaker("10.6.70.28", 0, 233, 2)
+	fmt.Printf("Read power of SMA %v\n", power_SMA)
 }
+
+///////////////////////////////////END OF MAIN//////////////////////////////////////////////////////////////
 
 func bytesToFloat32(bytes []byte) float32 {
 	// Assuming Big-endian byte order, adjust accordingly if needed
@@ -118,12 +116,12 @@ func mask_ip(IP_mask string, IP_device string) {
 
 }
 
-func modbusmaker(IP_mask string, slaveID int, register_value uint16, number_bytes int) []byte {
+func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_bytes uint16) []byte {
 	address := IP_mask + ":502"
 	handler := modbus.NewTCPClientHandler(address)
 
 	handler.Timeout = 5 * time.Second // Set your timeout value
-	handler.SlaveId = byte(slaveID)
+	handler.SlaveId = slaveID
 	// Deepsea `10.6.70.5`
 
 	// Create Modbus client using the handler
@@ -136,11 +134,31 @@ func modbusmaker(IP_mask string, slaveID int, register_value uint16, number_byte
 	}
 	defer handler.Close()
 
-	results, err := client.ReadHoldingRegisters(register_value, uint16(number_bytes))
+	results, err := client.ReadHoldingRegisters(register_value, number_bytes)
 	if err != nil {
 		fmt.Println("Error reading input registers:", err)
 	}
 	return results
 	// Display the results
 	// fmt.Printf("Read Fuel level of deepsea: %d%%\n", results[1])
+}
+
+func check_IP_connection(host string, port string) {
+	timeout := time.Second / 50
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+	if err != nil {
+		// fmt.Print("Closed\n")
+	}
+	if conn != nil {
+		fmt.Print("Open\n")
+	}
+}
+
+func convert_IP(IP string) int {
+	octets := strings.Split(IP, ".")
+	octet0, _ := strconv.Atoi(octets[0])
+	octet1, _ := strconv.Atoi(octets[1])
+	octet2, _ := strconv.Atoi(octets[2])
+	octet3, _ := strconv.Atoi(octets[3])
+	return (octet0 << 24) | (octet1 << 16) | (octet2 << 8) | octet3
 }
