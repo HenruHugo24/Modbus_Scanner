@@ -3,22 +3,24 @@
 
     "ip_mask": "255.255.255.0",
 
-    "ip_device": "10.6.70.44",
+    "gateway": "10.6.70.44",
+
+    "length_of_each_read":1,
 
     "known_register_range":{
-      "startvalue":11,
-      "endvalue":505050
+      "startvalue":1027,
+      "endvalue":1029
     },
     
 
     "slave_id_range": {
       "start":0,
-      "end":255
+      "end":5
     },
 
    
   
-    "lenght_of_each_read":1,
+    
 
     "port": "502",
 

@@ -1,3 +1,5 @@
+github.com/c-robinson/iplib v1.0.8 h1:exDRViDyL9UBLcfmlxxkY5odWX5092nPsQIykHXhIn4=
+github.com/c-robinson/iplib v1.0.8/go.mod h1:i3LuuFL1hRT5gFpBRnEydzw8R6yhGkF4szNDIbF8pgo=
 github.com/c-robinson/iplib/v2 v2.0.4 h1:JXdnuM3qFv1DegshgAJQiOfvJ5BPdtEUm7Ft2ABGCqY=
 github.com/c-robinson/iplib/v2 v2.0.4/go.mod h1:ZfjJB+pR8Guy++ylL+OgGzN9dd4jWAE1CszvwVrjlJI=
 github.com/goburrow/modbus v0.1.0 h1:DejRZY73nEM6+bt5JSP6IsFolJ9dVcqxsYbpLbeW/ro=
