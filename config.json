@@ -3,30 +3,31 @@
 
     "ip_mask": "255.255.255.0",
 
-    "gateway": "10.6.70.44",
+    "gateway": "10.6.70.1",
 
     "length_of_each_read":1,
 
     "known_register_range":{
-      "startvalue":1027,
-      "endvalue":1029
+      "startvalue":199,
+      "endvalue":202
     },
     
-
     "slave_id_range": {
-      "start":0,
-      "end":5
+      "start":126,
+      "end":129
     },
-
-   
-  
-    
 
     "port": "502",
 
-    "function_code":3,
+    "function_code":4,
 
     "baud_rates": [9600, 19200, 38400],  
     
-    "endianness": "big" 
+    "endianness": "big", 
+
+    "swap_bytes": "false",
+
+    "swap_words": true,
+
+    "Addfunction" : true
   }

@@ -27,6 +27,9 @@ type Config struct {
 	FunctionCode       int           `json:"function_code"`
 	BaudRates          []int         `json:"baud_rates"`
 	Endianness         string        `json:"endianness"`
+	SwapBytes          bool          `json:"swap_bytes"`
+	SwapWords          bool          `json:"swap_words"`
+	Addfunction        bool          `json:"Addfunction"`
 }
 type RegisterRange struct {
 	First int `json:"startvalue"`
@@ -54,16 +57,21 @@ func loadjson(filename string) (Config, error) { //youtube
 
 // ////////////////////////////Start of MAIN//////////////////////////////////////////////
 func main() {
+
 	// Load json file
 	json_data, _ := loadjson("config.json")
 
 	// couple of importantvariables
+	add_function_code := 0 //if register reading should start at 30000-40000
+	if json_data.Addfunction {
+		add_function_code = json_data.FunctionCode * 10000
+	}
 	port_number := json_data.Port
 	register_length := json_data.LengthOfRead
 	register_start_byte := json_data.KnownRegisterRange.First
 	register_end_byte := json_data.KnownRegisterRange.Last
 	amount_of_registers := register_end_byte - register_start_byte
-	fmt.Printf("Length of read %d\nFrom register %d\nTo register %d\n", register_length, register_start_byte, register_end_byte)
+	fmt.Printf("Length of read %d\nFrom register %d\nTo register %d\n", register_length, register_start_byte+add_function_code, register_end_byte+add_function_code)
 
 	//Starting IP and amount of addresses to read
 	ip_mask := convert_IP(json_data.IPmask)
@@ -79,9 +87,11 @@ func main() {
 		if bool_port_connection && (ip_counter != gateway) { // check if it is the Host
 			for j := json_data.SlaveIDRange.Start; j <= json_data.SlaveIDRange.End; j++ {
 				for k := 0; k < amount_of_registers; k += register_length {
-					data, _, fail := modbusmaker(ip_checker.String(), byte(j), uint16(register_start_byte+k), uint16(register_length))
+					data, _, fail := modbusmaker(ip_checker.String(), byte(j), uint16(register_start_byte+k+add_function_code), uint16(register_length))
 					if fail == 0 {
-						fmt.Printf("IP addres "+ip_checker.String()+" SlaveID %d Register Data %v\n", j, data)
+						// names, _ := net.LookupAddr(ip_checker.String())
+						// fmt.Println("Hostname:", names)
+						fmt.Printf("IP addres "+ip_checker.String()+" SlaveID %d Register %d Data %v\n", j, register_start_byte+k, data)
 					}
 
 				}
@@ -91,22 +101,41 @@ func main() {
 		}
 	}
 	fmt.Println("End of search hope you found what you are looking for")
-	// 	//Deepsea "10.6.70.5" Fuel level 1027
-	// 	fuel_level, _, _ := modbusmaker("10.6.70.5", 0, 1027, 1)
-	// 	fmt.Printf("Read Fuel level of deepsea: %d%%\n", fuel_level[1])
+	//Deepsea "10.6.70.5" Fuel level 1027
+	// fuel_level, _, _ := modbusmaker("10.6.70.5", 0, 1027, 1)
+	// fmt.Printf("Read Fuel level of deepsea: %d%%\n", fuel_level[1])
 
-	// 	// Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
-	// 	power_bluelog, _, _ := modbusmaker("10.6.70.15", 1, 254, 2)
-	// 	fmt.Printf("Read Power of bluelog: %v\n", bytesToFloat32(power_bluelog))
+	// // Bluelog `10.6.70.15` Power = 254, Freq = 98, Voltage = 100
+	// power_bluelog, _, _ := modbusmaker("10.6.70.15", 1, 254, 2)
+	// fmt.Printf("Read Power of bluelog: %v\n", bytesToFloat32(power_bluelog, false, true))
 
-	// 	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201
-	// 	power_SMA, _, _ := modbusmaker("10.6.70.28", 0, 199, 2)
-	// 	fmt.Printf("Read power of SMA %v\n", power_SMA)
+	// SMA Inverter `10.6.70.28` Power = 199, Freq = 201 30775
+	power_SMA, _, _ := modbusmaker("10.6.70.28", 126, 40199, 1)
+	power := (uint16(power_SMA[0]) << 8) + uint16(power_SMA[1])
+	fmt.Printf("Read power of SMA %f\n", float32(power/100))
+
+	// for i := 40500; i < 41000; i += 2 {
+	// 	power_SMA, _, _ := modbusmaker("10.6.70.28", 126, uint16(i), 2)
+	// 	fmt.Printf("Read power of register %d in SMA %v\n", i, power_SMA)
+	// }
 }
 
 ///////////////////////////////////END OF MAIN//////////////////////////////////////////////////////////////
 
-func bytesToFloat32(bytes []byte) float32 { //not sure if this works
+func bytesToFloat32(bytes []byte, swap_bytes bool, swap_words bool) float32 { //not sure if this works
+	if swap_bytes {
+		temp_byte := bytes[1]
+		bytes[1] = bytes[0]
+		bytes[0] = temp_byte
+	}
+	if swap_words {
+		temp_byte1 := bytes[0]
+		temp_byte2 := bytes[1]
+		bytes[0] = bytes[2]
+		bytes[1] = bytes[3]
+		bytes[2] = temp_byte1
+		bytes[3] = temp_byte2
+	}
 	bits := binary.BigEndian.Uint32(bytes)
 	return math.Float32frombits(bits)
 }
@@ -124,12 +153,14 @@ func modbusmaker(IP_mask string, slaveID byte, register_value uint16, number_byt
 
 	err := handler.Connect()
 	if err != nil {
+		// fmt.Println(err)
 		i++
 	}
 	defer handler.Close()
 
 	results, err := client.ReadHoldingRegisters(register_value, number_bytes)
 	if err != nil {
+		// fmt.Println(err)
 		i = i + 2
 	}
 	return results, err, i
@@ -145,6 +176,9 @@ func check_IP_connection(host string, port string) bool {
 	if conn != nil {
 		boolean = true
 	}
+	// name, _ := net.LookupCNAME(host)
+	// fmt.Println(name)
+	// net.LookupCNAME()
 	return boolean
 }
 
