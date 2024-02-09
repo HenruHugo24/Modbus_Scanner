@@ -1,0 +1,74 @@
+{
+  "DeviceInfo": {
+    "slaveID": 0,
+    "base": 1,
+    "endianness": true,
+    "timeout": 1000,
+    "registerSwap": true,
+    "byteSwap": true,
+    "sendFullAddress": true,
+    "deviceType": "Controller",
+    "deviceBrand": "Bluelog",
+    "deviceModel": "MC",
+    "phaseConfig": "3P",
+    "ipAddress": "",
+    "port": 502
+  },
+  "RegisterInfo": [
+    [
+      "",
+      3,
+      0,
+      2,
+      0,
+      0,
+      4,
+      "",
+      1
+    ],
+    [
+      "",
+      3,
+      0,
+      2,
+      0,
+      0,
+      4,
+      "",
+      1
+    ],
+    [
+      "",
+      3,
+      0,
+      2,
+      0,
+      0,
+      4,
+      "",
+      1
+    ],
+    [
+      "",
+      3,
+      0,
+      2,
+      0,
+      0,
+      4,
+      "",
+      1
+    ],
+    [
+      "",
+      3,
+      0,
+      2,
+      0,
+      0,
+      4,
+      "",
+      1
+    ]
+  ]
+}
