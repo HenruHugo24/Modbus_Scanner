@@ -5,16 +5,16 @@
 
     "gateway": "10.6.70.1",
 
-    "length_of_each_read":1,
+    "length_of_each_read":2,
 
     "known_register_range":{
-      "startvalue":199,
-      "endvalue":202
+      "startvalue":250,
+      "endvalue":260
     },
     
     "slave_id_range": {
-      "start":126,
-      "end":129
+      "start":0,
+      "end":5
     },
 
     "port": "502",
@@ -25,9 +25,15 @@
     
     "endianness": "big", 
 
-    "swap_bytes": "false",
+    "swap_bytes": false,
 
     "swap_words": true,
 
-    "Addfunction" : true
+    "Addfunction" : false,
+
+    "Convertion":"float32",
+
+    "Scale" :1,
+
+    "EdgeDeviceIP": "10.6.70.1"
   }

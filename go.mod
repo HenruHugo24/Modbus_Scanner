@@ -5,6 +5,7 @@ go 1.21.6
 require github.com/goburrow/modbus v0.1.0
 
 require (
+	github.com/Ullaakut/nmap v2.0.2+incompatible
 	github.com/c-robinson/iplib v1.0.8
 	github.com/c-robinson/iplib/v2 v2.0.4 // indirect
 	github.com/goburrow/serial v0.1.0 // indirect
